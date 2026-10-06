@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дорогая ли акция? Метод обратного мультипликатора</title>
+<style>
+  :root { --fg:#1a1a1a; --muted:#5a5a5a; --line:#e2e2e2; --bg:#ffffff; --card:#f7f7f7; --accent:#0b5fff; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.65; margin:0; padding:0 16px 64px; }
+  main { max-width:760px; margin:0 auto; }
+  h1 { font-size:1.7rem; line-height:1.3; margin:40px 0 8px; }
+  h2 { font-size:1.25rem; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p, li { font-size:1rem; }
+  .lede { color:var(--muted); font-size:1.05rem; margin-top:0; }
+  table { width:100%; border-collapse:collapse; margin:16px 0; font-size:0.95rem; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin:12px 0; }
+  .step b { display:block; margin-bottom:4px; }
+  .formula { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#fff;
+             border:1px solid var(--line); border-radius:6px; padding:8px 12px; margin:8px 0; font-size:0.95rem; }
+  .note { color:var(--muted); font-size:0.92rem; }
+  .calc { border:1px solid var(--line); border-radius:10px; padding:18px; margin:20px 0; background:#fbfbfb; }
+  .calc label { display:block; font-size:0.92rem; color:var(--muted); margin:10px 0 4px; }
+  .calc input { width:100%; padding:9px 10px; font-size:1rem; border:1px solid var(--line); border-radius:6px; }
+  .calc .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:560px){ .calc .row { grid-template-columns:1fr; } }
+  .result { margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
+  .result div { display:flex; justify-content:space-between; padding:4px 0; font-size:0.98rem; }
+  .result .big { font-weight:700; font-size:1.05rem; color:var(--accent); }
+  footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:0.88rem; }
+  footer a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Дорогая ли акция? Проверка методом обратного мультипликатора</h1>
+<p class="lede">Что делать: не спорить о справедливости мультипликатора, а вычислить, какие будущие результаты компании он подразумевает, и решить, верите ли Вы в них.</p>
+
+<h2>1. Идея метода</h2>
+<p>Рынок - машина дисконтирования: цена акции - это будущие денежные потоки компании, приведённые к сегодняшнему дню.</p>
+<p>Любой мультипликатор (P/E, P/S) - это сокращённая запись DCF-модели. В нём уже заложены предположения о будущем росте и марже - независимо от того, проговариваете Вы их или нет. Расчёт ниже делает эти предположения явными.</p>
+<p>Зачем это нужно: высокий мультипликатор сам по себе ни о чём не говорит. Вопрос не "дорого или дёшево", а "какой рост уже оплачен текущей ценой".</p>
+
+<h2>2. Ориентиры: что означает P/E</h2>
+<table>
+  <tr><th>P/E</th><th>Что подразумевает</th><th>Earnings yield (1 / P/E)</th></tr>
+  <tr><td>10x</td><td>Компания без роста. Конечная точка любой компании, когда рост заканчивается.</td><td>10%</td></tr>
+  <tr><td>17x</td><td>Историческое среднее S&amp;P 500. Средне-высокий однозначный рост.</td><td>5,8%</td></tr>
+  <tr><td>25x</td><td>Премия к рынку. Высокий однозначный - низкий двузначный рост после окончания гиперроста.</td><td>4%</td></tr>
+</table>
+<ul>
+  <li>При нулевом росте доходность инвестора равна текущей прибыли компании: при 10x это 10%. Рост 1-3% примерно равен инфляции, реальная доходность от этого не меняется.</li>
+  <li>При 17x: из 5,8% earnings yield около 2% выплачивается дивидендом (payout ~35%), остальное реинвестируется в рост. Долгосрочная доходность примерно равна: темп роста + дивидендная доходность.</li>
+  <li>Мультипликатор выбираете Вы. 25x в примере ниже - консервативный выбор: премия к рынку, но без допущения вечного гиперроста.</li>
+</ul>
+
+<h2>3. Расчёт: что заложено в цену (3 шага)</h2>
+<p>Входные данные: текущая капитализация компании и целевой мультипликатор P/E на момент, когда гиперрост закончится.</p>
+
+<div class="step">
+  <b>Шаг 1. Требуемая чистая прибыль</b>
+  <div class="formula">Чистая прибыль = Капитализация / целевой P/E</div>
+  <p class="note">Смысл: какая прибыль нужна, чтобы текущая цена оправдывалась при выбранном мультипликаторе.</p>
+</div>
+<div class="step">
+  <b>Шаг 2. Прибыль до налогов</b>
+  <div class="formula">Прибыль до налогов = Чистая прибыль / (1 - ставка налога)</div>
+</div>
+<div class="step">
+  <b>Шаг 3. Требуемая выручка</b>
+  <div class="formula">Выручка = Прибыль до налогов / операционная маржа</div>
+  <p class="note">Маржа должна соответствовать выбранному мультипликатору (см. раздел 5).</p>
+</div>
+
+<h2>4. Пример: Palantir (данные на 18.09.2026)</h2>
+<p>Цена $172, капитализация ~$440 млрд, выручка за 12 месяцев ~$6,2 млрд, P/S ~70x, P/E ~145x. Целевой мультипликатор: 25x. Ставка налога 20%, операционная маржа 60% (сейчас ~40%, допущение - рост за счёт операционного рычага).</p>
+<table>
+  <tr><th>Шаг</th><th>Расчёт</th><th>Результат</th></tr>
+  <tr><td>1. Чистая прибыль</td><td>440 / 25</td><td><b>$17,6 млрд</b></td></tr>
+  <tr><td>2. До налогов</td><td>17,6 / 0,8</td><td><b>$22 млрд</b></td></tr>
+  <tr><td>3. Выручка</td><td>22 / 0,6</td><td><b>$37 млрд</b></td></tr>
+</table>
+<p><b>Вывод:</b> в цене уже заложен рост выручки в 6 раз - с $6,2 до $37 млрд. И это только чтобы поддержать текущую цену при 25x. Заработок инвестора начинается с того, что произойдёт сверх заложенного.</p>
+
+<h2>5. Горизонт времени</h2>
+<p>Путь с $6,2 до $37 млрд за 5 лет - это среднегодовой рост (CAGR) в низких 40%, после чего рост замедляется до уровня, соответствующего 25x.</p>
+<p>Доходность инвестора формируется периодом после заложенного. Пример: если после этих 5 лет компания растёт ещё 3 года по 30% в год, справедливый мультипликатор на тот момент = 21x x 1,3^3 ~ 46x. Апсайд к текущей оценке = 46 / 25 = 84%.</p>
+<p>Другая формулировка того же: рынок оплатил 5 лет роста, инвестор в этом сценарии ставит на 8 лет.</p>
+
+<h2>6. Правило: маржа должна соответствовать мультипликатору</h2>
+<ul>
+  <li>Зрелый мультипликатор (25x) - зрелая, более высокая маржа: компания уже меньше инвестирует в рост.</li>
+  <li>Высокий мультипликатор (35-40x) - более низкая маржа: компания ещё инвестирует в рост через отчёт о прибылях и убытках, что давит на операционную маржу.</li>
+</ul>
+<p>Зачем это нужно: несогласованные допущения (высокий рост + зрелая маржа одновременно) завышают результат расчёта.</p>
+
+<h2>7. Калькулятор</h2>
+<div class="calc">
+  <div class="row">
+    <div><label>Капитализация, $ млрд</label><input id="mc" type="number" value="440" step="any"></div>
+    <div><label>Целевой P/E</label><input id="pe" type="number" value="25" step="any"></div>
+  </div>
+  <div class="row">
+    <div><label>Ставка налога, %</label><input id="tax" type="number" value="20" step="any"></div>
+    <div><label>Операционная маржа, %</label><input id="margin" type="number" value="60" step="any"></div>
+  </div>
+  <div class="row">
+    <div><label>Текущая выручка, $ млрд</label><input id="rev" type="number" value="6.2" step="any"></div>
+    <div><label>Горизонт, лет</label><input id="years" type="number" value="5" step="any"></div>
+  </div>
+  <div class="result">
+    <div><span>Требуемая чистая прибыль</span><b id="r-ni">-</b></div>
+    <div><span>Прибыль до налогов</span><b id="r-pbt">-</b></div>
+    <div><span>Требуемая выручка</span><b id="r-rev" class="big">-</b></div>
+    <div><span>Рост выручки, раз</span><b id="r-mult">-</b></div>
+    <div><span>Требуемый CAGR</span><b id="r-cagr">-</b></div>
+  </div>
+  <p class="note">Формулы: прибыль = капитализация / P/E; до налогов = прибыль / (1 - налог); выручка = до налогов / маржа; CAGR = (требуемая выручка / текущая)^(1/годы) - 1.</p>
+</div>
+
+<h2>8. Альтернатива: обратный DCF</h2>
+<p>Тот же принцип без выбора мультипликатора: задать темпы роста выручки и маржу на будущие периоды. На выходе модели - ставка дисконтирования, то есть доходность, которую Вы получите при текущей цене. Дальше решить, достаточна ли она для Вас.</p>
+<p>Зачем это нужно: большинству инвесторов проще иметь мнение о росте и марже компании, чем о "правильной" ставке дисконтирования.</p>
+
+<h2>9. Итог</h2>
+<ul>
+  <li>Мультипликатор - это DCF в сокращённом виде. Отказ от явных предположений их не отменяет: они уже заложены в цену, которую Вы платите.</li>
+  <li>Метод не говорит, покупать или нет. Он показывает, во что именно Вы должны верить, чтобы текущая цена оказалась оправданной.</li>
+</ul>
+
+<footer>
+  <p>По мотивам письма Drew Cohen "How Do You Know When a Stock is Expensive?" от 18.09.2026 (<a href="https://www.drewcohenmoney.com">drewcohenmoney.com</a>). Цифры примера - на дату письма.</p>
+  <p>Не является инвестиционной рекомендацией. Метод - инструмент проверки ожиданий, а не прогноз цены.</p>
+</footer>
+
+</main>
+<script>
+function fmt(x, d){ return isFinite(x) ? x.toLocaleString("ru-RU",{maximumFractionDigits:d===undefined?1:d}) : "-"; }
+function calc(){
+  var mc=parseFloat(document.getElementById("mc").value),
+      pe=parseFloat(document.getElementById("pe").value),
+      tax=parseFloat(document.getElementById("tax").value)/100,
+      m=parseFloat(document.getElementById("margin").value)/100,
+      rev=parseFloat(document.getElementById("rev").value),
+      yrs=parseFloat(document.getElementById("years").value);
+  var ni=mc/pe, pbt=ni/(1-tax), rr=pbt/m;
+  document.getElementById("r-ni").textContent = "$"+fmt(ni)+" млрд";
+  document.getElementById("r-pbt").textContent = "$"+fmt(pbt)+" млрд";
+  document.getElementById("r-rev").textContent = "$"+fmt(rr)+" млрд";
+  document.getElementById("r-mult").textContent = (rev>0&&rr>0) ? "x"+fmt(rr/rev) : "-";
+  document.getElementById("r-cagr").textContent = (rev>0&&rr>0&&yrs>0) ? fmt((Math.pow(rr/rev,1/yrs)-1)*100)+"% в год" : "-";
+}
+["mc","pe","tax","margin","rev","years"].forEach(function(id){
+  document.getElementById(id).addEventListener("input", calc);
+});
+calc();
+</script>
+</body>
+</html>
