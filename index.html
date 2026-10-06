@@ -30,6 +30,13 @@
   .result { margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
   .result div { display:flex; justify-content:space-between; padding:4px 0; font-size:0.98rem; }
   .result .big { font-weight:700; font-size:1.05rem; color:var(--accent); }
+  .ticker-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:end; margin-bottom:4px; }
+  @media (max-width:560px){ .ticker-row { grid-template-columns:1fr; } }
+  .ticker-row label { display:block; font-size:0.92rem; color:var(--muted); margin:10px 0 4px; }
+  .ticker-row input { width:100%; padding:9px 10px; font-size:1rem; border:1px solid var(--line); border-radius:6px; text-transform:uppercase; }
+  .ticker-row button { padding:10px 16px; font-size:1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; }
+  .ticker-row button:disabled { opacity:0.5; cursor:default; }
+  #fetchStatus { min-height:1.4em; }
   footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:0.88rem; }
   footer a { color:var(--accent); }
 </style>
@@ -100,6 +107,11 @@
 
 <h2>7. Калькулятор</h2>
 <div class="calc">
+  <div class="ticker-row">
+    <div><label>Тикер</label><input id="ticker" type="text" value="PLTR" placeholder="PLTR" maxlength="10"></div>
+    <div><button id="fetchBtn" type="button">Подтянуть данные</button></div>
+  </div>
+  <p class="note" id="fetchStatus"></p>
   <div class="row">
     <div><label>Капитализация, $ млрд</label><input id="mc" type="number" value="440" step="any"></div>
     <div><label>Целевой P/E</label><input id="pe" type="number" value="25" step="any"></div>
@@ -158,6 +170,45 @@ function calc(){
   document.getElementById(id).addEventListener("input", calc);
 });
 calc();
+
+var FINNHUB_KEY = "d0kuab9r01qhb02558rgd0kuab9r01qhb02558s0";
+async function fetchData(){
+  var sym = document.getElementById("ticker").value.trim().toUpperCase();
+  var st = document.getElementById("fetchStatus");
+  var btn = document.getElementById("fetchBtn");
+  if(!sym){ st.textContent = "Введите тикер."; return; }
+  btn.disabled = true;
+  st.textContent = "Загрузка данных " + sym + "...";
+  try{
+    var base = "https://finnhub.io/api/v1/stock/";
+    var res = await Promise.all([
+      fetch(base + "profile2?symbol=" + encodeURIComponent(sym) + "&token=" + FINNHUB_KEY),
+      fetch(base + "metric?symbol=" + encodeURIComponent(sym) + "&metric=all&token=" + FINNHUB_KEY)
+    ]);
+    var profile = await res[0].json();
+    var metric = (await res[1].json()).metric || {};
+    if(!profile || !profile.ticker){ st.textContent = "Тикер не найден."; return; }
+    var missing = [];
+    if(profile.marketCapitalization){
+      document.getElementById("mc").value = (profile.marketCapitalization/1000).toFixed(1);
+    } else { missing.push("капитализацию"); }
+    if(metric.operatingMarginTTM != null){
+      document.getElementById("margin").value = Number(metric.operatingMarginTTM).toFixed(1);
+    } else { missing.push("операционную маржу"); }
+    var rps = metric.revenuePerShareTTM, so = profile.shareOutstanding;
+    if(rps && so){
+      document.getElementById("rev").value = (rps*so/1000).toFixed(1);
+    } else { missing.push("выручку"); }
+    calc();
+    st.textContent = "Данные подтянуты: " + (profile.name || sym) + "." +
+      (missing.length ? " Не удалось получить " + missing.join(", ") + " - введите вручную." : "");
+  }catch(e){
+    st.textContent = "Ошибка загрузки. Проверьте соединение и попробуйте ещё раз.";
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById("fetchBtn").addEventListener("click", fetchData);
 </script>
 </body>
 </html>
